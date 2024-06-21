@@ -3,31 +3,27 @@ import axiosInstance from '../axiosInstance';
 import './Cart.css';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
 
 const Cart = () => {
     const [cartItems, setCartItems] = useState([]);
-    const [preferenceId, setPreferenceId] = useState(null);
 
     useEffect(() => {
-        initMercadoPago(process.env.REACT_APP_MERCADOPAGO_PUBLIC_KEY);
-        
-        const fetchCartItems = async () => {
-            try {
-                const response = await axiosInstance.get('/cart');
-                setCartItems(response.data);
-            } catch (error) {
-                console.error('Error fetching cart items:', error);
-            }
-        };
-
         fetchCartItems();
     }, []);
 
-    const removeFromCart = async (itemId) => {
+    const fetchCartItems = async () => {
         try {
-            await axiosInstance.post('/cart/remove', { itemId });
-            setCartItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+            const response = await axiosInstance.get('/cart');
+            setCartItems(response.data);
+        } catch (error) {
+            console.error('Error fetching cart items:', error);
+        }
+    };
+
+    const removeFromCart = async (productId) => {
+        try {
+            await axiosInstance.post('/cart/remove', { product_id: productId });
+            setCartItems((prevItems) => prevItems.filter((item) => item.product_id !== productId));
             toast.success('Producto eliminado del carrito correctamente');
         } catch (error) {
             console.error('Error removing item from cart:', error);
@@ -38,18 +34,21 @@ const Cart = () => {
     const handlePayment = async () => {
         try {
             const response = await axiosInstance.post('/payment/create');
-            if (response.data.preference_id) {
-                setPreferenceId(response.data.preference_id);
+            const initPoint = response.data.init_point;
+            if (initPoint) {
+                window.location.href = initPoint;
             } else {
-                throw new Error('No se recibió el ID de preferencia');
+                console.error('No se encontró el punto de inicio en la respuesta');
+                throw new Error('No se encontró el punto de inicio');
             }
         } catch (error) {
-            console.error('Error creating payment preference:', error.response?.data?.error || error.message);
+            console.error('Error al crear preferencia de pago:', error);
+            console.error('Detalles del error:', error.response?.data);
             toast.error(error.response?.data?.error || 'Error al crear la preferencia de pago');
         }
     };
 
-    const totalPrice = cartItems.reduce((acc, item) => acc + parseFloat(item.price), 0).toFixed(2);
+    const totalPrice = cartItems.reduce((acc, item) => acc + parseFloat(item.product.price) * item.quantity, 0).toFixed(2);
 
     return (
         <div className="cart-container">
@@ -63,34 +62,33 @@ const Cart = () => {
                             <tr>
                                 <th>Name</th>
                                 <th>Price</th>
+                                <th>Quantity</th>
+                                <th>Total</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {cartItems.map((item) => (
                                 <tr key={item.id}>
-                                    <td>{item.name}</td>
-                                    <td>${item.price}</td>
+                                    <td>{item.product.name}</td>
+                                    <td>${item.product.price}</td>
+                                    <td>{item.quantity}</td>
+                                    <td>${(parseFloat(item.product.price) * item.quantity).toFixed(2)}</td>
                                     <td>
-                                        <button onClick={() => removeFromCart(item.id)}>Remove</button>
+                                        <button onClick={() => removeFromCart(item.product_id)}>Remove</button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colSpan="2">Total:</td>
+                                <td colSpan="3">Total:</td>
                                 <td>${totalPrice}</td>
+                                <td></td>
                             </tr>
                         </tfoot>
                     </table>
                     <button className="buy-button" onClick={handlePayment}>Buy Now</button>
-                    {preferenceId && (
-                        <Wallet
-                            initialization={{ preferenceId }}
-                            onSubmit={async (param) => console.log(param)}
-                        />
-                    )}
                 </div>
             )}
         </div>
