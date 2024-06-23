@@ -22,3 +22,5 @@ Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 ![Prueba de funcionamiento](images/8.jpg)
 ![Prueba de funcionamiento](images/9.jpg)
 ![Prueba de funcionamiento](images/10.jpg)
+![Prueba de funcionamiento](images/11.jpg)
+![Prueba de funcionamiento](images/12.jpg)
